@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบบันทึกข้อมูล จนท.รักษาความปลอดภัยประจำหน่วย</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        theme: {
+                            // ธีมสีน้ำตาลแดงเข้ม (Dark Red-Brown)
+                            50: '#fdf2f2', 100: '#fde8e8', 200: '#fbd5d5', 
+                            300: '#f8b4b4', 400: '#f98080', 500: '#f05252', 
+                            600: '#c81e1e', 700: '#9b1c1c', 800: '#771d1d', 900: '#3f0f0f',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Kanit', sans-serif; background-color: #f8f4f4; color: #4a4a4a; font-size: 16px; }
+        .main-container { max-width: 1200px; margin: auto; }
+        
+        .btn-primary-custom { background-color: var(--theme-700, #9b1c1c); color: white; transition: all 0.3s; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .btn-primary-custom:hover { background-color: var(--theme-800, #771d1d); color: white; }
+        
+        .card-custom { background-color: white; border-radius: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); padding: 1.5rem; border: 1px solid #e5e7eb; }
+        .form-input-custom { width: 100%; padding: 0.625rem 1rem; font-size: 1rem; border-radius: 0.5rem; border: 1px solid #d1d5db; background-color: #fff; transition: all 0.3s; }
+        .form-input-custom:focus { outline: none; border-color: var(--theme-500, #f05252); box-shadow: 0 0 0 2px rgba(240, 82, 82, 0.2); }
+        .form-input-custom[readonly] { background-color: #f3f4f6; color: #6b7280; cursor: not-allowed; border-color: #e5e7eb; }
+        
+        .readonly-info-box {
+            background-color: #fff5f5;
+            border: 1px solid #fed7d7;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+        }
+
+        /* Custom Scrollbar for better look */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c81e1e; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9b1c1c; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="app-container" class="main-container mx-auto p-4">
+        
+        <!-- Header -->
+        <header id="app-header" class="card-custom mb-4 hidden bg-white border-l-4 border-theme-700">
+             <div class="flex justify-between items-center flex-wrap gap-4">
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-bold text-theme-800"><i class="fa-solid fa-user-shield mr-2"></i>ระบบบันทึกข้อมูล จนท.รักษาความปลอดภัยประจำหน่วย</h1>
+                    <div class="flex items-center gap-2">
+                        <p id="agency-display" class="text-base text-gray-600"></p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button id="logout-button" class="btn btn-outline-danger hover:bg-red-700 hover:text-white"><i class="fa-solid fa-right-from-bracket mr-2"></i>ออกจากระบบ</button>
+                </div>
+            </div>
+        </header>
+
+        <main id="content-area">
+            
+            <!-- LOGIN PAGE -->
+            <div id="login-page" class="hidden">
+                <div class="max-w-md mx-auto mt-10 card-custom border-t-4 border-theme-700">
+                    <div class="text-center mb-6">
+                        <div class="inline-block p-4 rounded-full bg-theme-50 mb-3 border border-theme-100">
+                            <i class="fa-solid fa-shield-halved text-5xl text-theme-700"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-800">เข้าสู่ระบบ</h2>
+                        <h3 class="text-gray-600 text-sm mt-1">บันทึกข้อมูลเจ้าหน้าที่รักษาความปลอดภัยประจำหน่วย</h3>						
+                    </div>
+                    <form id="login-form">
+                        <div class="mb-4">
+                            <label for="agency" class="block font-medium text-gray-700 mb-1">ชื่อหน่วยงาน /ตำแหน่ง</label>
+                            <select id="agency" class="form-input-custom" required></select>
+                        </div>
+                        <div class="mb-4 relative">
+                            <label for="password" class="block font-medium text-gray-700 mb-1">รหัสผ่าน</label>
+                            <input type="password" id="password" class="form-input-custom pr-10" required>
+                            <i class="fa-solid fa-eye absolute right-3 top-9 text-gray-400 cursor-pointer hover:text-theme-600" id="togglePassword"></i>
+                        </div>
+                        <button type="submit" class="w-full btn btn-primary-custom py-2 rounded-lg font-semibold shadow-md">เข้าสู่ระบบ</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- MAIN PAGE (Dashboard) -->
+            <div id="main-page" class="hidden">
+                <div class="card-custom">
+                    
+                    <!-- Dashboard Summary -->
+                    <div class="mb-6 p-4 bg-theme-50 rounded-lg border border-theme-200 flex justify-between items-center shadow-sm">
+                        <div>
+                            <h3 class="text-lg font-bold text-theme-900">ภาพรวมความคืบหน้า</h3>
+                            <p class="text-sm text-theme-700">หน่วยเลือกตั้งในความรับผิดชอบของคุณ</p>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-3xl font-bold text-theme-800" id="progress-text">0%</div>
+                            <div class="text-xs text-theme-600 font-medium mt-1">บันทึกข้อมูลแล้ว</div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+                        <h2 class="text-xl font-bold text-gray-800 border-l-4 border-theme-600 pl-3">รายชื่อหน่วยเลือกตั้ง</h2>
+                        <div class="flex gap-2">
+                            <button id="refresh-data-btn" class="btn bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 shadow-sm transition-all duration-200">
+                                <i class="fa-solid fa-arrows-rotate mr-1"></i> <span>รีเฟรช</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Table View (Updated Columns) -->
+                    <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                        <table class="min-w-full bg-white">
+                            <thead class="bg-theme-800 text-white">
+                                <tr>
+                                    <th class="text-center py-3 px-4 uppercase font-semibold text-sm w-16">ลำดับ</th>
+                                    <th class="py-3 px-4 uppercase font-semibold text-sm">หน่วยที่</th>
+                                    <th class="py-3 px-4 uppercase font-semibold text-sm">แขวง</th>
+                                    <th class="py-3 px-4 uppercase font-semibold text-sm">สถานที่เลือกตั้ง</th>
+                                    <th class="text-center py-3 px-4 uppercase font-semibold text-sm w-16">พิกัด</th>
+                                    <th class="py-3 px-4 uppercase font-semibold text-sm w-48">สถานะ</th>
+                                    <th class="text-center py-3 px-4 uppercase font-semibold text-sm w-32">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stations-table-body" class="text-gray-700 text-sm divide-y divide-gray-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EDIT FORM PAGE (Security Guard Specific) -->
+            <div id="edit-form-page" class="hidden">
+                <div class="card-custom max-w-4xl mx-auto border-t-4 border-theme-600">
+                    <form id="guard-form">
+                        <input type="hidden" id="StationID" name="StationID">
+                        <input type="hidden" id="Agency" name="Agency">
+                        
+                        <div class="flex justify-between items-center mb-6 border-b pb-4 border-gray-200">
+                            <div>
+                                <h2 class="text-2xl font-bold text-theme-800"><i class="fa-solid fa-pen-to-square mr-2"></i>บันทึกข้อมูล จนท.รักษาความปลอดภัยประจำหน่วย</h2>
+                                <p class="text-sm text-gray-500">กรุณากรอกข้อมูลให้ครบถ้วน</p>
+                            </div>
+                            <button type="button" id="back-to-main-btn" class="btn bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 shadow-sm">
+                                <i class="fa-solid fa-arrow-left mr-2"></i>กลับ
+                            </button>
+                        </div>
+
+                        <!-- Read-Only Station Info -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div class="readonly-info-box">
+                                <label class="block text-xs font-bold text-theme-800 uppercase mb-1">หน่วยเลือกตั้งที่</label>
+                                <div id="display-station-number" class="text-lg font-bold text-gray-800">-</div>
+                            </div>
+                            <div class="readonly-info-box">
+                                <label class="block text-xs font-bold text-theme-800 uppercase mb-1">แขวง</label>
+                                <div id="display-subdistrict" class="text-base font-medium text-gray-800">-</div>
+                            </div>
+                            <div class="readonly-info-box">
+                                <label class="block text-xs font-bold text-theme-800 uppercase mb-1">สถานที่เลือกตั้ง</label>
+                                <div id="display-location" class="text-base font-medium text-gray-800">-</div>
+                            </div>
+                        </div>
+
+                        <!-- Guard Inputs Section -->
+                        <div class="bg-theme-50 border border-theme-200 rounded-lg p-5 shadow-inner">
+                            <h3 class="font-bold text-lg text-theme-800 mb-4 flex items-center">
+                                <i class="fa-solid fa-user-shield mr-2"></i> ข้อมูลเจ้าหน้าที่
+                            </h3>
+                            
+                            <div id="guard-inputs-container" class="space-y-6">
+                                <!-- Inputs generated by JS -->
+                                <div class="text-center py-4 text-gray-500">กำลังโหลดฟอร์ม...</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-8 text-center">
+                          <button type="submit" class="bg-theme-700 hover:bg-theme-800 text-white font-bold py-3 px-12 rounded-lg shadow-lg transition-all transform hover:scale-105 text-lg">
+                            <i class="fas fa-save mr-2"></i> บันทึกข้อมูล
+                          </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+    // ==========================================
+    // กำหนด URL ของ Google Apps Script Web App ที่นี่
+    // ==========================================
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycby_6_KgQMpdGZLajHSTBzagfIHEA_F8xeBI_rLeOgmarioBFICf4c6Nup5e7EZKtkxf/exec";
+
+    async function apiCall(action, payload = {}) {
+        payload.action = action;
+        try {
+            const response = await fetch(GAS_API_URL, {
+                method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload)
+            });
+            return await response.json();
+        } catch (error) {
+            console.error('API Error:', error);
+            throw new Error('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const app = {
+            // UI Elements
+            loginPage: document.getElementById('login-page'),
+            mainPage: document.getElementById('main-page'),
+            editFormPage: document.getElementById('edit-form-page'),
+            appHeader: document.getElementById('app-header'),
+            loginForm: document.getElementById('login-form'),
+            guardForm: document.getElementById('guard-form'),
+            stationsTableBody: document.getElementById('stations-table-body'),
+            guardInputsContainer: document.getElementById('guard-inputs-container'),
+            
+            // State
+            currentUser: null,
+            roles: [],
+            
+            async init() {
+                this.setupEventListeners();
+                this.showLoading('กำลังเริ่มต้นระบบ...');
+                
+                try {
+                    const [agencies, roles] = await Promise.all([
+                        apiCall('getAgencyList'),
+                        apiCall('getPersonnelRoles')
+                    ]);
+                    
+                    this.populateAgencyDropdown(agencies || []);
+                    this.roles = roles || [];
+                    
+                    Swal.close();
+                    this.checkLoginState();
+                } catch (error) {
+                    Swal.close();
+                    Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อระบบได้', 'error');
+                }
+            },
+
+            setupEventListeners() {
+                this.loginForm.addEventListener('submit', (e) => this.handleLogin(e));
+                document.getElementById('logout-button').addEventListener('click', () => this.handleLogout());
+                document.getElementById('back-to-main-btn').addEventListener('click', () => this.showMainPage());
+                document.getElementById('refresh-data-btn').addEventListener('click', () => this.loadDashboardData());
+                document.getElementById('togglePassword').addEventListener('click', () => {
+                    const el = document.getElementById('password');
+                    el.type = el.type === 'password' ? 'text' : 'password';
+                });
+                
+                this.guardForm.addEventListener('submit', (e) => this.handleSave(e));
+            },
+
+            populateAgencyDropdown(agencies) {
+                const select = document.getElementById('agency');
+                select.innerHTML = '<option value="" disabled selected>— เลือกหน่วยงาน/เขต —</option>';
+                agencies.forEach(agencyName => { 
+                    if(agencyName !== 'Administrator') { 
+                        select.innerHTML += `<option value="${agencyName}">${agencyName}</option>`; 
+                    } 
+                });
+            },
+
+            checkLoginState() {
+                const loggedInAgency = sessionStorage.getItem('guardLoggedInAgency');
+                if (loggedInAgency) {
+                    this.currentUser = loggedInAgency;
+                    this.showMainPage();
+                } else {
+                    this.showLoginPage();
+                }
+            },
+
+            showLoginPage() {
+                this.loginPage.classList.remove('hidden');
+                this.mainPage.classList.add('hidden');
+                this.editFormPage.classList.add('hidden');
+                this.appHeader.classList.add('hidden');
+            },
+
+            showMainPage() {
+                this.loginPage.classList.add('hidden');
+                this.editFormPage.classList.add('hidden');
+                this.mainPage.classList.remove('hidden');
+                this.appHeader.classList.remove('hidden');
+                
+                document.getElementById('agency-display').textContent = this.currentUser;
+                this.loadDashboardData();
+            },
+
+            handleLogin(e) {
+                e.preventDefault();
+                const agency = document.getElementById('agency').value;
+                const password = document.getElementById('password').value;
+                
+                this.showLoading('กำลังตรวจสอบ...');
+                
+                apiCall('login', { agency, password }).then(res => {
+                    Swal.close();
+                    if (res.status === 'success') {
+                        this.currentUser = res.agency;
+                        sessionStorage.setItem('guardLoggedInAgency', res.agency);
+                        this.showMainPage();
+                    } else {
+                        Swal.fire('แจ้งเตือน', res.message, 'error');
+                    }
+                }).catch(() => Swal.fire('Error', 'เข้าสู่ระบบไม่สำเร็จ', 'error'));
+            },
+
+            handleLogout() {
+                sessionStorage.removeItem('guardLoggedInAgency');
+                this.currentUser = null;
+                this.checkLoginState();
+            },
+
+            loadDashboardData() {
+                this.stationsTableBody.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-gray-500">กำลังโหลดข้อมูล...</td></tr>`;
+                
+                apiCall('getDashboardData', { agency: this.currentUser }).then(res => {
+                    if (res.status === 'success') {
+                        this.renderStationsTable(res.stations);
+                        
+                        // Calculate total progress
+                        if(res.summary) {
+                            let percent = 0;
+                            if(Array.isArray(res.summary)) {
+                                let total = 0, completed = 0;
+                                res.summary.forEach(item => {
+                                    total += item.totalStations;
+                                    completed += item.completedStations;
+                                });
+                                percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+                            } else {
+                                percent = res.summary.overallProgress || 0;
+                            }
+                            document.getElementById('progress-text').textContent = `${percent}%`;
+                        } else {
+                             document.getElementById('progress-text').textContent = `0%`;
+                        }
+                    } else {
+                        this.stationsTableBody.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-red-500">ไม่สามารถโหลดข้อมูลได้</td></tr>`;
+                        document.getElementById('progress-text').textContent = `Error`;
+                    }
+                });
+            },
+
+            renderStationsTable(stations) {
+                if (!stations || stations.length === 0) {
+                    this.stationsTableBody.innerHTML = `<tr><td colspan="7" class="text-center py-10">ไม่พบข้อมูลหน่วยเลือกตั้ง</td></tr>`;
+                    return;
+                }
+                
+                let html = '';
+                stations.forEach((station, index) => {
+                    const progress = station.progress || 0;
+                    const isComplete = progress >= 100; 
+                    
+                    // Colors for progress bar
+                    const progressBarColor = progress < 50 ? 'bg-yellow-500' : progress < 100 ? 'bg-blue-500' : 'bg-green-500';
+                    
+                    // Generate Progress Bar HTML
+                    const progressBarHtml = `
+                        <div class="flex items-center">
+                            <span class="text-xs font-bold w-10 text-right pr-2 text-theme-800">${progress}%</span>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="${progressBarColor} h-2 rounded-full" style="width: ${progress}%"></div>
+                            </div>
+                        </div>`;
+
+                    // Map Link HTML
+                    const mapLinkHtml = station.MapLink 
+                        ? `<a href="${station.MapLink}" target="_blank" class="text-theme-600 hover:text-theme-800" title="ดูแผนที่"><i class="fa-solid fa-map-location-dot text-xl"></i></a>` 
+                        : `<span class="text-gray-300"><i class="fa-solid fa-map-location-dot text-xl"></i></span>`;
+
+                    html += `
+                    <tr class="hover:bg-theme-50 transition-colors border-b">
+                        <td class="text-center py-3 px-4 font-bold text-gray-500">${index + 1}</td>
+                        <td class="py-3 px-4 font-bold text-theme-800">${station.StationNumber}</td>
+                        <td class="py-3 px-4">${station.SubDistrict}</td>
+                        <td class="py-3 px-4 text-gray-700">${station.Location}</td>
+                        <td class="text-center py-3 px-4">${mapLinkHtml}</td>
+                        <td class="py-3 px-4 align-middle">${progressBarHtml}</td>
+                        <td class="text-center py-3 px-4">
+                            <button onclick="app.showEditForm('${station.StationID}')" class="bg-white border border-theme-300 text-theme-700 hover:bg-theme-100 hover:text-theme-900 hover:border-theme-400 px-3 py-1.5 rounded-md text-sm font-medium transition-all shadow-sm flex items-center justify-center mx-auto">
+                                <i class="fa-solid fa-pen-to-square mr-1"></i> บันทึก
+                            </button>
+                        </td>
+                    </tr>`;
+                });
+                this.stationsTableBody.innerHTML = html;
+            },
+
+            showEditForm(stationId) {
+                this.showLoading('กำลังเตรียมฟอร์ม...');
+                
+                apiCall('getPollingStationData', { stationId }).then(data => {
+                    Swal.close();
+                    if(data) {
+                        this.renderGuardForm(data);
+                        
+                        // Switch Views
+                        this.mainPage.classList.add('hidden');
+                        this.editFormPage.classList.remove('hidden');
+                    } else {
+                        Swal.fire('Error', 'ไม่พบข้อมูลหน่วยเลือกตั้ง', 'error');
+                    }
+                });
+            },
+
+            renderGuardForm(data) {
+                // Set Hidden Fields
+                document.getElementById('StationID').value = data.StationID;
+                document.getElementById('Agency').value = this.currentUser; // Auto-set Agency for permission check
+
+                // Set Read-Only Displays
+                document.getElementById('display-station-number').textContent = data.StationNumber;
+                document.getElementById('display-subdistrict').textContent = data.SubDistrict;
+                document.getElementById('display-location').textContent = data.Location;
+
+                // Filter Roles: ONLY Security Guards
+                const guardRoles = this.roles.filter(r => 
+                    r.title.includes('รักษาความปลอดภัย') || 
+                    r.title.includes('รปภ') || 
+                    r.title.toLowerCase().includes('security')
+                );
+
+                if (guardRoles.length === 0) {
+                    this.guardInputsContainer.innerHTML = `<div class="text-center text-red-500 py-4">ไม่พบตำแหน่งเจ้าหน้าที่รักษาความปลอดภัยในระบบ</div>`;
+                    return;
+                }
+
+                let html = '';
+                guardRoles.forEach(role => {
+                    const prefix = data[`${role.id}_Prefix`] || '';
+                    const fname = data[`${role.id}_FirstName`] || '';
+                    const lname = data[`${role.id}_LastName`] || '';
+                    const idCard = data[`${role.id}_IDCard`] || '';
+                    const phone = data[`${role.id}_Phone`] || '';
+
+                    html += `
+                    <div class="bg-white p-5 rounded-lg shadow-md border border-theme-100 relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-1 h-full bg-theme-600"></div>
+                        <h4 class="font-bold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center justify-between">
+                            <span class="flex items-center"><i class="fa-solid fa-user-tag text-theme-600 mr-2"></i> ${role.title}</span>
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ยศตำรวจ</label>
+                                <input type="text" name="${role.id}_Prefix" value="${prefix}" class="form-input-custom" placeholder="ร.ต.อ./ส.ต.อ./ด.ต./...">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">เบอร์โทรศัพท์</label>
+                                <input type="tel" name="${role.id}_Phone" value="${phone}" class="form-input-custom" placeholder="0XXXXXXXXX">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อ</label>
+                                <input type="text" name="${role.id}_FirstName" value="${fname}" class="form-input-custom">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">นามสกุล</label>
+                                <input type="text" name="${role.id}_LastName" value="${lname}" class="form-input-custom">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">เลขบัตรประชาชน (13 หลัก)</label>
+                                <input type="text" name="${role.id}_IDCard" value="${idCard}" class="form-input-custom font-mono tracking-wide" maxlength="13" placeholder="XXXXXXXXXXXXX">
+                            </div>
+                        </div>
+                    </div>`;
+                });
+
+                this.guardInputsContainer.innerHTML = html;
+            },
+
+            handleSave(e) {
+                e.preventDefault();
+                
+                // Simple Validation - Modified to allow empty
+                const inputs = this.guardInputsContainer.querySelectorAll('input[name$="_IDCard"]');
+                for(let input of inputs) {
+                    const val = input.value.trim();
+                    if(val !== '' && (val.length !== 13 || isNaN(val))) {
+                        Swal.fire({
+                            title: 'ข้อมูลไม่ถูกต้อง',
+                            text: 'หากระบุเลขบัตรประชาชน กรุณากรอกให้ครบ 13 หลัก (ตัวเลขเท่านั้น) หรือเว้นว่างไว้',
+                            icon: 'warning',
+                            confirmButtonColor: '#771d1d'
+                        });
+                        return;
+                    }
+                }
+
+                this.showLoading('กำลังบันทึกข้อมูล...');
+
+                const formData = new FormData(this.guardForm);
+                const dataObject = Object.fromEntries(formData.entries());
+
+                apiCall('savePollingStationData', { dataObject }).then(res => {
+                    if (res.status === 'success') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'บันทึกสำเร็จ',
+                            text: 'ข้อมูล จนท.รักษาความปลอดภัย ถูกบันทึกเรียบร้อยแล้ว',
+                            timer: 2000,
+                            showConfirmButton: false,
+                            color: '#771d1d'
+                        }).then(() => {
+                            this.showMainPage();
+                        });
+                    } else {
+                        Swal.fire('แจ้งเตือน', res.message, 'warning');
+                    }
+                }).catch(() => Swal.fire('Error', 'บันทึกข้อมูลไม่สำเร็จ', 'error'));
+            },
+
+            showLoading(title) {
+                Swal.fire({
+                    title: title,
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading(),
+                    color: '#771d1d'
+                });
+            }
+        };
+
+        window.app = app;
+        app.init();
+    });
+    </script>
+</body>
+</html>
