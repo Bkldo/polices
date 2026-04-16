@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ระบบบันทึกข้อมูล จนท.รักษาความปลอดภัยประจำหน่วย</title>
-	<link rel="icon" href="favicon.ico" type="image/x-icon">  
+	<link rel="icon" href="favicon.ico" type="image/x-icon">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -28,6 +28,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- SheetJS for Excel (เพิ่มไลบรารีสำหรับสร้างไฟล์ Excel) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Google Fonts -->
@@ -233,7 +235,8 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="px-6 py-3 border-t border-gray-200 bg-gray-50 text-right">
+                    <div class="px-6 py-3 border-t border-gray-200 bg-gray-50 flex justify-between items-center">
+                        <button id="export-guards-excel-btn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium shadow-sm transition-all"><i class="fas fa-file-excel mr-2"></i>Export Excel</button>
                         <button id="close-guards-modal-footer-btn" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-6 rounded-lg font-medium shadow-sm transition-all">ปิดหน้าต่าง</button>
                     </div>
                 </div>
@@ -315,6 +318,7 @@
                 document.getElementById('view-guards-btn').addEventListener('click', () => this.showGuardsListModal());
                 document.getElementById('close-guards-modal-btn').addEventListener('click', () => this.hideGuardsListModal());
                 document.getElementById('close-guards-modal-footer-btn').addEventListener('click', () => this.hideGuardsListModal());
+                document.getElementById('export-guards-excel-btn').addEventListener('click', () => this.exportToExcel()); // เพิ่มปุ่ม Export
 
                 this.guardForm.addEventListener('submit', (e) => this.handleSave(e));
             },
@@ -593,6 +597,64 @@
             hideGuardsListModal() {
                 document.getElementById('guards-list-modal').classList.add('hidden');
                 document.body.style.overflow = ''; // คืนค่าการเลื่อนหน้าจอ
+            },
+
+            exportToExcel() {
+                if (!this.currentStations || this.currentStations.length === 0) {
+                    Swal.fire('แจ้งเตือน', 'ไม่มีข้อมูลให้ Export', 'info');
+                    return;
+                }
+
+                let exportData = [];
+                let count = 1;
+
+                this.currentStations.forEach(station => {
+                    if (station.guards && station.guards.length > 0) {
+                        station.guards.forEach(guard => {
+                            exportData.push({
+                                'ลำดับ': count++,
+                                'หน่วยที่': station.StationNumber,
+                                'แขวง': station.SubDistrict,
+                                'ตำแหน่ง': guard.role,
+                                'ชื่อ-สกุล': guard.name || '-',
+                                'เบอร์โทรศัพท์': guard.phone || '-'
+                            });
+                        });
+                    } else {
+                        // กรณีหน่วยนั้นยังไม่มีข้อมูล
+                        exportData.push({
+                            'ลำดับ': count++,
+                            'หน่วยที่': station.StationNumber,
+                            'แขวง': station.SubDistrict,
+                            'ตำแหน่ง': 'ยังไม่ระบุ',
+                            'ชื่อ-สกุล': '-',
+                            'เบอร์โทรศัพท์': '-'
+                        });
+                    }
+                });
+
+                // สร้าง Worksheet
+                const ws = XLSX.utils.json_to_sheet(exportData);
+
+                // จัดความกว้างคอลัมน์
+                const wscols = [
+                    {wch: 8},   // ลำดับ
+                    {wch: 10},  // หน่วยที่
+                    {wch: 15},  // แขวง
+                    {wch: 25},  // ตำแหน่ง
+                    {wch: 30},  // ชื่อ-สกุล
+                    {wch: 15}   // เบอร์โทรศัพท์
+                ];
+                ws['!cols'] = wscols;
+
+                // สร้าง Workbook และ สั่งดาวน์โหลด
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "SecurityGuards");
+                
+                const today = new Date();
+                const dateStr = `${today.getFullYear()}${(today.getMonth()+1).toString().padStart(2, '0')}${today.getDate().toString().padStart(2, '0')}`;
+                
+                XLSX.writeFile(wb, `Security_Guards_Report_${dateStr}.xlsx`);
             },
 
             handleSave(e) {
