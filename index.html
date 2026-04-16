@@ -388,7 +388,7 @@
             },
 
             loadDashboardData() {
-                this.stationsTableBody.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-gray-500"><i class="fa-solid fa-spinner fa-spin text-3xl text-theme-600"></i><br>กำลังโหลดข้อมูล...</td></tr>`;
+                this.stationsTableBody.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-gray-500"><i class="fa-solid fa-spinner fa-spin text-3xl text-theme-600"></i><br><br>กำลังโหลดข้อมูล...</td></tr>`;
                 
                 apiCall('getDashboardData', { agency: this.currentUser }).then(res => {
                     if (res.status === 'success') {
