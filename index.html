@@ -28,7 +28,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- SheetJS for Excel (เพิ่มไลบรารีสำหรับสร้างไฟล์ Excel) -->
+    <!-- SheetJS for Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -54,7 +54,7 @@
             padding: 0.75rem;
         }
 
-        /* Custom Scrollbar for better look */
+        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #c81e1e; border-radius: 4px; }
@@ -135,7 +135,7 @@
                         </div>
                     </div>
 
-                    <!-- Table View (Updated Columns) -->
+                    <!-- Table View -->
                     <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
                         <table class="min-w-full bg-white">
                             <thead class="bg-theme-800 text-white">
@@ -155,7 +155,7 @@
                 </div>
             </div>
 
-            <!-- EDIT FORM PAGE (Security Guard Specific) -->
+            <!-- EDIT FORM PAGE -->
             <div id="edit-form-page" class="hidden">
                 <div class="card-custom max-w-full mx-auto border-t-4 border-theme-600">
                     <form id="guard-form">
@@ -209,7 +209,7 @@
                 </div>
             </div>
 
-            <!-- Guards List Modal (ตารางภาพรวม) -->
+            <!-- Guards List Modal -->
             <div id="guards-list-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-[100] hidden flex items-center justify-center p-4 transition-opacity">
                 <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden border-t-4 border-theme-600">
                     <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-theme-50">
@@ -268,7 +268,6 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         const app = {
-            // UI Elements
             loginPage: document.getElementById('login-page'),
             mainPage: document.getElementById('main-page'),
             editFormPage: document.getElementById('edit-form-page'),
@@ -278,23 +277,26 @@
             stationsTableBody: document.getElementById('stations-table-body'),
             guardInputsContainer: document.getElementById('guard-inputs-container'),
             
-            // State
             currentUser: null,
             roles: [],
-            currentStations: [], // เพิ่ม State เพื่อเก็บข้อมูลหน่วยเลือกตั้งไว้ใช้ตอนเปิด Modal
+            currentStations: [],
+            systemSettings: {}, // เพิ่มตัวแปรเก็บการตั้งค่า
             
             async init() {
                 this.setupEventListeners();
                 this.showLoading('กำลังเริ่มต้นระบบ...');
                 
                 try {
-                    const [agencies, roles] = await Promise.all([
+                    // โหลดการตั้งค่าระบบด้วย (getSystemSettings)
+                    const [agencies, roles, settings] = await Promise.all([
                         apiCall('getAgencyList'),
-                        apiCall('getPersonnelRoles')
+                        apiCall('getPersonnelRoles'),
+                        apiCall('getSystemSettings').catch(() => ({}))
                     ]);
                     
                     this.populateAgencyDropdown(agencies || []);
                     this.roles = roles || [];
+                    this.systemSettings = settings || {};
                     
                     Swal.close();
                     this.checkLoginState();
@@ -314,11 +316,10 @@
                     el.type = el.type === 'password' ? 'text' : 'password';
                 });
                 
-                // Add Event Listeners for the Guards Modal
                 document.getElementById('view-guards-btn').addEventListener('click', () => this.showGuardsListModal());
                 document.getElementById('close-guards-modal-btn').addEventListener('click', () => this.hideGuardsListModal());
                 document.getElementById('close-guards-modal-footer-btn').addEventListener('click', () => this.hideGuardsListModal());
-                document.getElementById('export-guards-excel-btn').addEventListener('click', () => this.exportToExcel()); // เพิ่มปุ่ม Export
+                document.getElementById('export-guards-excel-btn').addEventListener('click', () => this.exportToExcel());
 
                 this.guardForm.addEventListener('submit', (e) => this.handleSave(e));
             },
@@ -392,12 +393,11 @@
                 
                 apiCall('getDashboardData', { agency: this.currentUser }).then(res => {
                     if (res.status === 'success') {
-                        this.currentStations = res.stations || []; // บันทึกข้อมูลใส่ State
+                        this.currentStations = res.stations || [];
                         this.renderStationsTable(this.currentStations);
                         
-                        document.getElementById('view-guards-btn').classList.remove('hidden'); // แสดงปุ่มตารางรวม
+                        document.getElementById('view-guards-btn').classList.remove('hidden');
                         
-                        // Calculate total progress
                         if(res.summary) {
                             let percent = 0;
                             if(Array.isArray(res.summary)) {
@@ -430,12 +430,8 @@
                 let html = '';
                 stations.forEach((station, index) => {
                     const progress = station.progress || 0;
-                    const isComplete = progress >= 100; 
                     
-                    // Colors for progress bar
                     const progressBarColor = progress < 50 ? 'bg-yellow-500' : progress < 100 ? 'bg-blue-500' : 'bg-green-500';
-                    
-                    // Generate Progress Bar HTML
                     const progressBarHtml = `
                         <div class="flex items-center">
                             <span class="text-xs font-bold w-10 text-right pr-2 text-theme-800">${progress}%</span>
@@ -444,10 +440,29 @@
                             </div>
                         </div>`;
 
-                    // Map Link HTML
                     const mapLinkHtml = station.MapLink 
                         ? `<a href="${station.MapLink}" target="_blank" class="text-theme-600 hover:text-theme-800" title="ดูแผนที่"><i class="fa-solid fa-map-location-dot text-xl"></i></a>` 
                         : `<span class="text-gray-300"><i class="fa-solid fa-map-location-dot text-xl"></i></span>`;
+
+                    // ปรับปุ่มให้สอดคล้องกับสิทธิ์ (ถ้าล็อคหมด จะเปลี่ยนคำเป็น "ดูข้อมูล")
+                    const guardFillByConfig = this.systemSettings.guardFillBy || 'SECURITY';
+                    let allSecLocked = true;
+                    const guardRoles = this.roles.filter(r => r.title.includes('รักษาความปลอดภัย') || r.title.includes('รปภ') || r.title.toLowerCase().includes('security'));
+                    if (guardRoles.length > 0) {
+                        guardRoles.forEach(role => {
+                            let roleFillBy = 'SECURITY';
+                            if (typeof guardFillByConfig === 'object' && guardFillByConfig[role.id]) {
+                                roleFillBy = guardFillByConfig[role.id];
+                            } else if (typeof guardFillByConfig === 'string') {
+                                roleFillBy = guardFillByConfig;
+                            }
+                            if (roleFillBy !== 'AGENCY') allSecLocked = false;
+                        });
+                    } else {
+                        allSecLocked = false;
+                    }
+                    
+                    const btnLabel = allSecLocked ? '<i class="fa-solid fa-eye mr-1"></i> ดูข้อมูล' : '<i class="fa-solid fa-pen-to-square mr-1"></i> บันทึก';
 
                     html += `
                     <tr class="hover:bg-theme-50 transition-colors border-b">
@@ -458,8 +473,8 @@
                         <td class="text-center py-3 px-4">${mapLinkHtml}</td>
                         <td class="py-3 px-4 align-middle">${progressBarHtml}</td>
                         <td class="text-center py-3 px-4">
-                            <button onclick="app.showEditForm('${station.StationID}')" class="bg-white border border-theme-300 text-theme-700 hover:bg-theme-100 hover:text-theme-900 hover:border-theme-400 px-3 py-1.5 rounded-md text-sm font-medium transition-all shadow-sm flex items-center justify-center mx-auto">
-                                <i class="fa-solid fa-pen-to-square mr-1"></i> บันทึก
+                            <button onclick="app.showEditForm('${station.StationID}')" class="bg-white border border-theme-300 text-theme-700 hover:bg-theme-100 hover:text-theme-900 hover:border-theme-400 px-3 py-1.5 rounded-md text-sm font-medium transition-all shadow-sm flex items-center justify-center mx-auto whitespace-nowrap">
+                                ${btnLabel}
                             </button>
                         </td>
                     </tr>`;
@@ -474,8 +489,6 @@
                     Swal.close();
                     if(data) {
                         this.renderGuardForm(data);
-                        
-                        // Switch Views
                         this.mainPage.classList.add('hidden');
                         this.editFormPage.classList.remove('hidden');
                     } else {
@@ -485,16 +498,13 @@
             },
 
             renderGuardForm(data) {
-                // Set Hidden Fields
                 document.getElementById('StationID').value = data.StationID;
-                document.getElementById('Agency').value = this.currentUser; // Auto-set Agency for permission check
+                document.getElementById('Agency').value = this.currentUser;
 
-                // Set Read-Only Displays
                 document.getElementById('display-station-number').textContent = data.StationNumber;
                 document.getElementById('display-subdistrict').textContent = data.SubDistrict;
                 document.getElementById('display-location').textContent = data.Location;
 
-                // Filter Roles: ONLY Security Guards
                 const guardRoles = this.roles.filter(r => 
                     r.title.includes('รักษาความปลอดภัย') || 
                     r.title.includes('รปภ') || 
@@ -506,6 +516,16 @@
                     return;
                 }
 
+                // --- เช็คสิทธิ์ว่าโรงเรียนเป็นคนกรอกแทนหรือไม่ (แยกรายตำแหน่ง) ---
+                const guardFillByConfig = this.systemSettings.guardFillBy || 'SECURITY';
+                let allSecLocked = true;
+
+                // จัดการหน้าต่างแจ้งเตือนและปุ่ม Submit
+                const existingAlert = document.getElementById('security-lock-alert');
+                if (existingAlert) existingAlert.remove();
+
+                const submitBtn = this.guardForm.querySelector('button[type="submit"]');
+
                 let html = '';
                 guardRoles.forEach(role => {
                     const prefix = data[`${role.id}_Prefix`] || '';
@@ -514,27 +534,51 @@
                     const idCard = data[`${role.id}_IDCard`] || '';
                     const phone = data[`${role.id}_Phone`] || '';
 
+                    let roleFillBy = 'SECURITY';
+                    if (typeof guardFillByConfig === 'object' && guardFillByConfig[role.id]) {
+                        roleFillBy = guardFillByConfig[role.id];
+                    } else if (typeof guardFillByConfig === 'string') {
+                        roleFillBy = guardFillByConfig;
+                    }
+
+                    const isRoleLocked = (roleFillBy === 'AGENCY');
+                    if (!isRoleLocked) {
+                        allSecLocked = false;
+                    }
+
+                    const bgClass = isRoleLocked ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white';
+                    const readonlyAttr = isRoleLocked ? 'readonly disabled' : '';
+                    
+                    let roleAlertHtml = '';
+                    if (isRoleLocked) {
+                        roleAlertHtml = `
+                            <div class="mb-3 p-2 bg-red-50 text-red-700 border border-red-200 rounded text-sm flex items-center shadow-sm">
+                                <i class="fa-solid fa-lock mr-2"></i> ตำแหน่งนี้ถูกกำหนดให้บันทึกโดยโรงเรียน/หน่วยงาน
+                            </div>
+                        `;
+                    }
+
                     html += `
                     <div class="bg-white p-5 rounded-lg shadow-md border border-theme-100 relative overflow-hidden">
                         <div class="absolute top-0 left-0 w-1 h-full bg-theme-600"></div>
                         <h4 class="font-bold text-gray-800 mb-4 pb-2 border-b border-gray-100 flex items-center justify-between">
                             <span class="flex items-center"><i class="fa-solid fa-user-tag text-theme-600 mr-2"></i> ${role.title}</span>
                         </h4>
-                        
+                        ${roleAlertHtml}
                         <div class="space-y-4">
                             <!-- แถวที่ 1: ยศตำรวจ, ชื่อ, นามสกุล -->
                             <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
                                 <div class="md:col-span-3 lg:col-span-2">
                                     <label class="block text-sm font-medium text-gray-700 mb-1">ยศ/คำนำหน้า</label>
-                                    <input type="text" name="${role.id}_Prefix" value="${prefix}" class="form-input-custom" placeholder="ร.ต.อ./ส.ต.อ./ด.ต./...">
+                                    <input type="text" name="${role.id}_Prefix" value="${prefix}" class="form-input-custom ${bgClass}" placeholder="ร.ต.อ./ส.ต.อ./ด.ต./..." ${readonlyAttr}>
                                 </div>
                                 <div class="md:col-span-4 lg:col-span-5">
                                     <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อ</label>
-                                    <input type="text" name="${role.id}_FirstName" value="${fname}" class="form-input-custom">
+                                    <input type="text" name="${role.id}_FirstName" value="${fname}" class="form-input-custom ${bgClass}" ${readonlyAttr}>
                                 </div>
                                 <div class="md:col-span-5 lg:col-span-5">
                                     <label class="block text-sm font-medium text-gray-700 mb-1">นามสกุล</label>
-                                    <input type="text" name="${role.id}_LastName" value="${lname}" class="form-input-custom">
+                                    <input type="text" name="${role.id}_LastName" value="${lname}" class="form-input-custom ${bgClass}" ${readonlyAttr}>
                                 </div>
                             </div>
 
@@ -542,11 +586,11 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">เลขบัตรประชาชน (13 หลัก)</label>
-                                    <input type="text" name="${role.id}_IDCard" value="${idCard}" class="form-input-custom font-mono tracking-wide" maxlength="13" placeholder="XXXXXXXXXXXXX">
+                                    <input type="text" name="${role.id}_IDCard" value="${idCard}" class="form-input-custom font-mono tracking-wide ${bgClass}" maxlength="13" placeholder="XXXXXXXXXXXXX" ${readonlyAttr}>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">เบอร์โทรศัพท์</label>
-                                    <input type="tel" name="${role.id}_Phone" value="${phone}" class="form-input-custom" placeholder="0XXXXXXXXX">
+                                    <input type="tel" name="${role.id}_Phone" value="${phone}" class="form-input-custom ${bgClass}" placeholder="0XXXXXXXXX" ${readonlyAttr}>
                                 </div>
                             </div>
                         </div>
@@ -554,6 +598,22 @@
                 });
 
                 this.guardInputsContainer.innerHTML = html;
+
+                if (allSecLocked) {
+                    const alertHtml = `
+                    <div id="security-lock-alert" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start shadow-sm">
+                        <i class="fa-solid fa-lock text-red-600 text-xl mt-1 mr-3"></i>
+                        <div>
+                            <h4 class="text-red-800 font-bold">ระบบปิดการแก้ไขสำหรับตำรวจ/รปภ. (ทุกตำแหน่ง)</h4>
+                            <p class="text-red-700 text-sm mt-1">ผู้ดูแลระบบได้กำหนดให้ <b>โรงเรียน/หน่วยงาน</b> เป็นผู้บันทึกข้อมูลในส่วนนี้แทน คุณสามารถดูข้อมูลได้เท่านั้น</p>
+                        </div>
+                    </div>`;
+                    this.guardInputsContainer.parentElement.insertAdjacentHTML('afterbegin', alertHtml);
+                    
+                    if(submitBtn) submitBtn.style.display = 'none';
+                } else {
+                    if(submitBtn) submitBtn.style.display = 'inline-block';
+                }
             },
 
             showGuardsListModal() {
@@ -571,7 +631,6 @@
 
                         if (station.guards && station.guards.length > 0) {
                             station.guards.forEach((guard, index) => {
-                                // เพิ่มเส้นคั่นประบางๆ กรณีมีเจ้าหน้าที่มากกว่า 1 คนในหน่วยเดียวกัน
                                 const spacing = index > 0 ? 'mt-2 pt-2 border-t border-dashed border-gray-200' : '';
                                 
                                 rolesHtml += `<div class="${spacing}"><span class="bg-theme-100 text-theme-800 text-xs px-2 py-1 rounded-full font-medium border border-theme-200 whitespace-nowrap">${guard.role}</span></div>`;
@@ -579,7 +638,6 @@
                                 phonesHtml += `<div class="${spacing} font-mono text-gray-600">${guard.phone || '-'}</div>`;
                             });
                         } else {
-                            // กรณีที่ยังไม่มีการบันทึกข้อมูล
                             rolesHtml = `<span class="text-red-400 text-xs font-medium bg-red-50 px-2 py-1 rounded-full border border-red-100">ยังไม่ระบุ</span>`;
                             namesHtml = `<span class="text-gray-300">-</span>`;
                             phonesHtml = `<span class="text-gray-300">-</span>`;
@@ -599,12 +657,12 @@
 
                 tbody.innerHTML = html;
                 document.getElementById('guards-list-modal').classList.remove('hidden');
-                document.body.style.overflow = 'hidden'; // ป้องกันการเลื่อนจอพื้นหลัง
+                document.body.style.overflow = 'hidden'; 
             },
 
             hideGuardsListModal() {
                 document.getElementById('guards-list-modal').classList.add('hidden');
-                document.body.style.overflow = ''; // คืนค่าการเลื่อนหน้าจอ
+                document.body.style.overflow = ''; 
             },
 
             exportToExcel() {
@@ -629,7 +687,6 @@
                             });
                         });
                     } else {
-                        // กรณีหน่วยนั้นยังไม่มีข้อมูล
                         exportData.push({
                             'ลำดับ': count++,
                             'หน่วยที่': station.StationNumber,
@@ -641,21 +698,10 @@
                     }
                 });
 
-                // สร้าง Worksheet
                 const ws = XLSX.utils.json_to_sheet(exportData);
-
-                // จัดความกว้างคอลัมน์
-                const wscols = [
-                    {wch: 8},   // ลำดับ
-                    {wch: 10},  // หน่วยที่
-                    {wch: 15},  // แขวง
-                    {wch: 25},  // ตำแหน่ง
-                    {wch: 30},  // ชื่อ-สกุล
-                    {wch: 15}   // เบอร์โทรศัพท์
-                ];
+                const wscols = [ {wch: 8}, {wch: 10}, {wch: 15}, {wch: 25}, {wch: 30}, {wch: 15} ];
                 ws['!cols'] = wscols;
 
-                // สร้าง Workbook และ สั่งดาวน์โหลด
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "SecurityGuards");
                 
@@ -668,7 +714,25 @@
             handleSave(e) {
                 e.preventDefault();
                 
-                // Simple Validation - Modified to allow empty
+                // ตรวจสอบว่าโดนล็อคทั้งหมดหรือไม่
+                const guardFillByConfig = this.systemSettings.guardFillBy || 'SECURITY';
+                let allSecLocked = true;
+                const guardRoles = this.roles.filter(r => r.title.includes('รักษาความปลอดภัย') || r.title.includes('รปภ') || r.title.toLowerCase().includes('security'));
+                
+                guardRoles.forEach(role => {
+                    let roleFillBy = 'SECURITY';
+                    if (typeof guardFillByConfig === 'object' && guardFillByConfig[role.id]) {
+                        roleFillBy = guardFillByConfig[role.id];
+                    } else if (typeof guardFillByConfig === 'string') {
+                        roleFillBy = guardFillByConfig;
+                    }
+                    if (roleFillBy !== 'AGENCY') allSecLocked = false;
+                });
+
+                if (allSecLocked) {
+                    return; // ป้องกันการกด Submit ผ่าน Console หากโดนล็อคสิทธิ์ทั้งหมด
+                }
+
                 const inputs = this.guardInputsContainer.querySelectorAll('input[name$="_IDCard"]');
                 for(let input of inputs) {
                     const val = input.value.trim();
