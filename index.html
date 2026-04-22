@@ -326,9 +326,12 @@
 
             populateAgencyDropdown(agencies) {
                 const select = document.getElementById('agency');
-                select.innerHTML = '<option value="" disabled selected>— เลือกหน่วยงาน/เขต —</option>';
+                select.innerHTML = '<option value="" disabled selected>— เลือกหน่วยงาน/ตำแหน่ง —</option>';
                 agencies.forEach(agencyName => { 
-                    if(agencyName !== 'Administrator') { 
+                    // เช็คว่าเป็น รปภ. หรือไม่
+                    const isSecurity = agencyName.includes('รักษาความปลอดภัย') || agencyName.includes('รปภ');
+                    // แสดงเฉพาะที่เป็น รปภ. เท่านั้น
+                    if(isSecurity && agencyName !== 'Administrator') { 
                         select.innerHTML += `<option value="${agencyName}">${agencyName}</option>`; 
                     } 
                 });
