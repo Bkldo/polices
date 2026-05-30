@@ -280,6 +280,7 @@
             currentUser: null,
             roles: [],
             currentStations: [],
+            currentStationSecurityLocked: false,
             systemSettings: {}, // เพิ่มตัวแปรเก็บการตั้งค่า
             
             async init() {
@@ -464,15 +465,18 @@
                     } else {
                         allSecLocked = false;
                     }
+                    const isStationSecurityLocked = !!station.SecurityGuardLocked;
+                    if (isStationSecurityLocked) allSecLocked = true;
                     
                     const btnLabel = allSecLocked ? '<i class="fa-solid fa-eye mr-1"></i> ดูข้อมูล' : '<i class="fa-solid fa-pen-to-square mr-1"></i> บันทึก';
+                    const securityLockBadge = isStationSecurityLocked ? `<div class="mt-1 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 text-xs font-bold"><i class="fa-solid fa-lock"></i> แอดมินล็อก</div>` : '';
 
                     html += `
                     <tr class="hover:bg-theme-50 transition-colors border-b">
                         <td class="text-center py-3 px-4 font-bold text-gray-500">${index + 1}</td>
                         <td class="py-3 px-4 font-bold text-theme-800">${station.StationNumber}</td>
                         <td class="py-3 px-4">${station.SubDistrict}</td>
-                        <td class="py-3 px-4 text-gray-700">${station.Location}</td>
+                        <td class="py-3 px-4 text-gray-700">${station.Location}${securityLockBadge}</td>
                         <td class="text-center py-3 px-4">${mapLinkHtml}</td>
                         <td class="py-3 px-4 align-middle">${progressBarHtml}</td>
                         <td class="text-center py-3 px-4">
@@ -507,6 +511,8 @@
                 document.getElementById('display-station-number').textContent = data.StationNumber;
                 document.getElementById('display-subdistrict').textContent = data.SubDistrict;
                 document.getElementById('display-location').textContent = data.Location;
+                const isStationSecurityLocked = String(data.SecurityGuardLocked).toUpperCase() === 'TRUE';
+                this.currentStationSecurityLocked = isStationSecurityLocked;
 
                 const guardRoles = this.roles.filter(r => 
                     r.title.includes('รักษาความปลอดภัย') || 
@@ -544,7 +550,7 @@
                         roleFillBy = guardFillByConfig;
                     }
 
-                    const isRoleLocked = (roleFillBy === 'AGENCY');
+                    const isRoleLocked = isStationSecurityLocked || (roleFillBy === 'AGENCY');
                     if (!isRoleLocked) {
                         allSecLocked = false;
                     }
@@ -554,9 +560,12 @@
                     
                     let roleAlertHtml = '';
                     if (isRoleLocked) {
+                        const lockText = isStationSecurityLocked
+                            ? 'แอดมินล็อกไม่ให้บันทึกเจ้าหน้าที่รักษาความปลอดภัยสำหรับหน่วยนี้'
+                            : 'ตำแหน่งนี้ถูกกำหนดให้บันทึกโดยโรงเรียน/หน่วยงาน';
                         roleAlertHtml = `
                             <div class="mb-3 p-2 bg-red-50 text-red-700 border border-red-200 rounded text-sm flex items-center shadow-sm">
-                                <i class="fa-solid fa-lock mr-2"></i> ตำแหน่งนี้ถูกกำหนดให้บันทึกโดยโรงเรียน/หน่วยงาน
+                                <i class="fa-solid fa-lock mr-2"></i> ${lockText}
                             </div>
                         `;
                     }
@@ -603,12 +612,18 @@
                 this.guardInputsContainer.innerHTML = html;
 
                 if (allSecLocked) {
+                    const lockTitle = isStationSecurityLocked
+                        ? 'แอดมินล็อกการบันทึก รปภ. สำหรับหน่วยนี้'
+                        : 'ระบบปิดการแก้ไขสำหรับตำรวจ/รปภ. (ทุกตำแหน่ง)';
+                    const lockMessage = isStationSecurityLocked
+                        ? 'หน่วยเลือกตั้งนี้ถูกล็อกเป็นรายหน่วย คุณสามารถดูข้อมูลได้เท่านั้น'
+                        : 'ผู้ดูแลระบบได้กำหนดให้ <b>โรงเรียน/หน่วยงาน</b> เป็นผู้บันทึกข้อมูลในส่วนนี้แทน คุณสามารถดูข้อมูลได้เท่านั้น';
                     const alertHtml = `
                     <div id="security-lock-alert" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start shadow-sm">
                         <i class="fa-solid fa-lock text-red-600 text-xl mt-1 mr-3"></i>
                         <div>
-                            <h4 class="text-red-800 font-bold">ระบบปิดการแก้ไขสำหรับตำรวจ/รปภ. (ทุกตำแหน่ง)</h4>
-                            <p class="text-red-700 text-sm mt-1">ผู้ดูแลระบบได้กำหนดให้ <b>โรงเรียน/หน่วยงาน</b> เป็นผู้บันทึกข้อมูลในส่วนนี้แทน คุณสามารถดูข้อมูลได้เท่านั้น</p>
+                            <h4 class="text-red-800 font-bold">${lockTitle}</h4>
+                            <p class="text-red-700 text-sm mt-1">${lockMessage}</p>
                         </div>
                     </div>`;
                     this.guardInputsContainer.parentElement.insertAdjacentHTML('afterbegin', alertHtml);
@@ -716,6 +731,11 @@
 
             handleSave(e) {
                 e.preventDefault();
+
+                if (this.currentStationSecurityLocked) {
+                    Swal.fire('แจ้งเตือน', 'แอดมินล็อกไม่ให้บันทึกเจ้าหน้าที่รักษาความปลอดภัยสำหรับหน่วยนี้', 'warning');
+                    return;
+                }
                 
                 // ตรวจสอบว่าโดนล็อคทั้งหมดหรือไม่
                 const guardFillByConfig = this.systemSettings.guardFillBy || 'SECURITY';
